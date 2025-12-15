@@ -27,6 +27,7 @@
     <style>
         body {
             font-family: 'Cairo', sans-serif;
+            background-color: #163300;
             -webkit-tap-highlight-color: transparent;
             -webkit-user-select: none;
             -ms-user-select: none;
@@ -212,7 +213,7 @@
     </script>
 </head>
 
-<body class="bg-gray-100 text-gray-900 transition-colors duration-300" oncontextmenu="return false;">
+<body class="text-gray-900 transition-colors duration-300" oncontextmenu="return false;">
     <div id="root"></div>
 
     <script>
@@ -931,8 +932,8 @@
             );
         };
 
-        const SplashScreen = () => (
-            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#020b00] overflow-hidden">
+        const SplashScreen = ({ fading }) => (
+            <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#020b00] overflow-hidden transition-opacity duration-700 ${fading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                 <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-[radial-gradient(circle_at_center,_#163300_0%,_transparent_50%)] animate-pulse" style={{ animationDuration: '4s' }}></div>
 
                 <div className="relative z-10 flex flex-col items-center animate-in fade-in zoom-in duration-1000">
@@ -1067,6 +1068,7 @@
         // --- Main App ---
         function App() {
             const [showSplash, setShowSplash] = useState(true);
+            const [splashFading, setSplashFading] = useState(false);
             const [activeTab, setActiveTab] = useState('home');
             const [currencyData, setCurrencyData] = useState([]);
             const [globalRawData, setGlobalRawData] = useState(null);
@@ -1162,7 +1164,10 @@
             const dragItem = useRef();
             const dragOverItem = useRef();
 
-            useEffect(() => { setTimeout(() => setShowSplash(false), 3000); }, []);
+            useEffect(() => {
+                setTimeout(() => setSplashFading(true), 2500);
+                setTimeout(() => setShowSplash(false), 3200);
+            }, []);
             useEffect(() => { localStorage.setItem('pinnedCurrencies', JSON.stringify(pinned)); }, [pinned]);
             useEffect(() => { localStorage.setItem('goldOrder', JSON.stringify(goldOrder)); }, [goldOrder]);
             useEffect(() => { localStorage.setItem('showGoldOnHome', showGold); }, [showGold]);
@@ -2223,7 +2228,7 @@
             return (
                 <div className="min-h-screen bg-gray-100 dark:bg-gray-900 max-w-md mx-auto relative shadow-2xl overflow-hidden">
                     <InstallPrompt />
-                    {showSplash && <SplashScreen />}
+                    {showSplash && <SplashScreen fading={splashFading} />}
 
                     {activeTab === 'home' && renderHome()}
                     {activeTab === 'gold' && renderGold()}
@@ -2241,4 +2246,4 @@
     </script>
 </body>
 
-</html>
+    </html>
