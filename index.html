@@ -1640,8 +1640,19 @@
             useEffect(() => { if (goldData.length > 0 && !selectedGoldId) setSelectedGoldId(goldData[0].id || goldData[0].description); }, [goldData]);
 
             useEffect(() => {
-                if (goldData.length > 0 && pinnedGold.length === 0) {
-                    setPinnedGold(goldData.slice(0, 2).map(g => g.description));
+                if (goldData.length > 0 && pinnedGold.length === 0 && !localStorage.getItem('pinnedGold')) {
+                    const ounce = goldData.find(g => g.description.includes('أونصة') || g.description.includes('Ounce'));
+                    const k24 = goldData.find(g => g.description.includes('24'));
+                    const k21 = goldData.find(g => g.description.includes('21'));
+                    const k18 = goldData.find(g => g.description.includes('18'));
+
+                    const defaultPinned = [ounce, k24, k21, k18]
+                        .filter(Boolean)
+                        .map(g => g.description);
+
+                    if (defaultPinned.length > 0) {
+                        setPinnedGold(defaultPinned);
+                    }
                 }
             }, [goldData]);
 
