@@ -352,6 +352,40 @@
                 transform: translateY(-10px);
             }
         }
+
+        @keyframes skeleton-pulse {
+            0% {
+                opacity: 0.6;
+                transform: scale(0.98);
+            }
+
+            50% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+
+            100% {
+                opacity: 0.6;
+                transform: scale(0.98);
+            }
+        }
+
+        .skeleton-animate {
+            animation: skeleton-pulse 2s infinite ease-in-out;
+        }
+
+        .skeleton-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dark .skeleton-card {
+            background: rgba(31, 41, 55, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
     </style>
 
     <script>
@@ -1066,6 +1100,31 @@
             );
         };
 
+        const SkeletonCard = () => (
+            <div className="skeleton-card rounded-2xl p-4 mb-3 md:mb-0 shadow-sm skeleton-animate">
+                <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-gray-200/30 dark:bg-gray-700/30 blur-sm"></div>
+                        <div className="space-y-2">
+                            <div className="w-24 h-4 bg-gray-200/30 dark:bg-gray-700/30 rounded-md blur-sm"></div>
+                            <div className="w-12 h-3 bg-gray-100/30 dark:bg-gray-800/30 rounded-md blur-sm"></div>
+                        </div>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="h-16 bg-gray-100/20 dark:bg-gray-800/20 rounded-xl blur-md"></div>
+                    <div className="h-16 bg-gray-100/20 dark:bg-gray-800/20 rounded-xl blur-md"></div>
+                </div>
+                <div className="absolute inset-0 bg-white/10 dark:bg-black/10 backdrop-blur-[2px]"></div>
+            </div>
+        );
+
+        const SkeletonList = ({ count = 4 }) => (
+            <div className="md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4 mb-8">
+                {Array(count).fill(0).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+        );
+
         // --- Energy Modal ---
         const EnergyDetailModal = ({ energy, onClose, onMove, time }) => {
             if (!energy) return null;
@@ -1589,16 +1648,7 @@
 
             const [goldOrder, setGoldOrder] = useState(() => { try { return JSON.parse(localStorage.getItem('goldOrder')) || []; } catch { return []; } });
 
-            const [pinnedGold, setPinnedGold] = useState(() => {
-                try {
-                    const stored = localStorage.getItem('pinnedGold');
-                    if (stored) return JSON.parse(stored);
-                    // Default list if nothing stored (First Run)
-                    return [];
-                } catch {
-                    return [];
-                }
-            });
+            const [pinnedGold, setPinnedGold] = useState(() => { try { return JSON.parse(localStorage.getItem('pinnedGold')) || []; } catch { return []; } });
 
             const [energyOrder, setEnergyOrder] = useState(() => {
                 try {
@@ -1663,7 +1713,22 @@
             }, []);
             useEffect(() => { if (goldData.length > 0 && !selectedGoldId) setSelectedGoldId(goldData[0].id || goldData[0].description); }, [goldData]);
 
+            useEffect(() => {
+                if (goldData.length > 0 && pinnedGold.length === 0 && !localStorage.getItem('pinnedGold')) {
+                    const ounce = goldData.find(g => g.description.includes('أونصة') || g.description.includes('Ounce'));
+                    const k24 = goldData.find(g => g.description.includes('24'));
+                    const k21 = goldData.find(g => g.description.includes('21'));
+                    const k18 = goldData.find(g => g.description.includes('18'));
 
+                    const defaultPinned = [ounce, k24, k21, k18]
+                        .filter(Boolean)
+                        .map(g => g.description);
+
+                    if (defaultPinned.length > 0) {
+                        setPinnedGold(defaultPinned);
+                    }
+                }
+            }, [goldData]);
 
             useEffect(() => {
                 if (calcSource) {
@@ -1713,30 +1778,6 @@
 
                 setCurrencyData(enrichedCurrencies);
                 setGoldData(enrichedGold);
-
-                // --- Default pinned gold if first time (Home Shortcut) ---
-                if (enrichedGold.length > 0 && !localStorage.getItem('pinnedGold')) {
-                    const patterns = [
-                        g => g.description.includes('أونصة') || g.description.includes('اونصة') || g.description.includes('Ounce'),
-                        g => g.description.includes('24'),
-                        g => g.description.includes('21'),
-                        g => g.description.includes('18')
-                    ];
-
-                    const defaultPinned = [];
-                    patterns.forEach(pattern => {
-                        const item = enrichedGold.find(pattern);
-                        if (item && !defaultPinned.includes(item.description)) {
-                            defaultPinned.push(item.description);
-                        }
-                    });
-
-                    if (defaultPinned.length > 0) {
-                        setPinnedGold(defaultPinned);
-                        // Save immediately to avoid race conditions on mobile/async re-renders
-                        localStorage.setItem('pinnedGold', JSON.stringify(defaultPinned));
-                    }
-                }
 
                 setGoldOrder(prevOrder => {
                     const currentDescriptions = enrichedGold.map(g => g.description);
@@ -1870,7 +1911,7 @@
                     <div className="pb-24 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
                         <Header title="أسعار الصرف" subtitle="مباشر مقابل الليرة السورية" time={dbLastUpdate} setActiveTab={setActiveTab} loadData={loadData} />
                         <div className="px-4 pt-4">
-                            {loading ? <div className="text-center py-10 text-gray-400">جاري التحميل...</div> : (
+                            {loading ? <SkeletonList count={4} /> : (
                                 <>
                                     <div className="mb-8">
                                         <TransferOverviewCard setActiveTab={setActiveTab} />
@@ -2002,7 +2043,7 @@
                     <div className="pb-24 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
                         <Header title="أسعار الذهب" subtitle="تحديث لحظي من الصاغة" time={dbLastUpdate} showBack={true} onBack={() => setActiveTab('home')} setActiveTab={setActiveTab} loadData={loadData} />
                         <div className="px-4 pt-4">
-                            {loading ? <div className="text-center py-10">جاري التحميل...</div> : (
+                            {loading ? <SkeletonList count={6} /> : (
                                 <>
                                     <div className="mb-8 space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6">
                                         {finalDisplayGold.map((g, i) => {
@@ -2138,7 +2179,7 @@
                                     <button onClick={() => setBaseCurrency('EUR')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${baseCurrency === 'EUR' ? 'bg-white dark:bg-gray-600 shadow text-brand-dark dark:text-white' : 'text-gray-500'}`}>EUR (€)</button>
                                 </div>
                             </div>
-                            {globalLoading && !globalRawData ? <div className="text-center py-10 text-gray-400">جاري جلب الأسعار...</div> : (
+                            {globalLoading && !globalRawData ? <SkeletonList count={6} /> : (
                                 <>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
                                         {displayList.map((curr, i) => (
