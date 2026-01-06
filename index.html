@@ -1712,23 +1712,6 @@
             useEffect(() => { if (goldData.length > 0 && !selectedGoldId) setSelectedGoldId(goldData[0].id || goldData[0].description); }, [goldData]);
 
             useEffect(() => {
-                if (goldData.length > 0 && pinnedGold.length === 0 && !localStorage.getItem('pinnedGold')) {
-                    const ounce = goldData.find(g => g.description.includes('أونصة') || g.description.includes('Ounce'));
-                    const k24 = goldData.find(g => g.description.includes('24'));
-                    const k21 = goldData.find(g => g.description.includes('21'));
-                    const k18 = goldData.find(g => g.description.includes('18'));
-
-                    const defaultPinned = [ounce, k24, k21, k18]
-                        .filter(Boolean)
-                        .map(g => g.description);
-
-                    if (defaultPinned.length > 0) {
-                        setPinnedGold(defaultPinned);
-                    }
-                }
-            }, [goldData]);
-
-            useEffect(() => {
                 if (calcSource) {
                     const base = parseFloat(calcSource[calcMode === 'sell' ? 'sell_price' : 'buy_price']);
                     let points = 24, volatility = 0.01;
@@ -1777,10 +1760,40 @@
                 setCurrencyData(enrichedCurrencies);
                 setGoldData(enrichedGold);
 
+                const currentGoldDescriptions = enrichedGold.map(g => g.description);
+
+                // Initialize pinnedGold if first time
+                if (!localStorage.getItem('pinnedGold')) {
+                    const ounce = enrichedGold.find(g => g.description.includes('أونصة') || g.description.includes('Ounce'));
+                    const k24 = enrichedGold.find(g => g.description.includes('24'));
+                    const k21 = enrichedGold.find(g => g.description.includes('21'));
+                    const k18 = enrichedGold.find(g => g.description.includes('18'));
+
+                    const topFour = [ounce, k24, k21, k18].filter(Boolean).map(g => g.description);
+                    const others = currentGoldDescriptions.filter(desc => !topFour.includes(desc));
+                    const allDefault = [...topFour, ...others];
+
+                    if (allDefault.length > 0) {
+                        setPinnedGold(allDefault);
+                    }
+                }
+
                 setGoldOrder(prevOrder => {
-                    const currentDescriptions = enrichedGold.map(g => g.description);
-                    let validOrder = prevOrder.filter(d => currentDescriptions.includes(d));
-                    const newItems = currentDescriptions.filter(d => !validOrder.includes(d));
+                    let validOrder = prevOrder.filter(d => currentGoldDescriptions.includes(d));
+                    const newItems = currentGoldDescriptions.filter(d => !validOrder.includes(d));
+
+                    if (prevOrder.length === 0) {
+                        // First time: use requested order
+                        const ounce = enrichedGold.find(g => g.description.includes('أونصة') || g.description.includes('Ounce'));
+                        const k24 = enrichedGold.find(g => g.description.includes('24'));
+                        const k21 = enrichedGold.find(g => g.description.includes('21'));
+                        const k18 = enrichedGold.find(g => g.description.includes('18'));
+
+                        const topFour = [ounce, k24, k21, k18].filter(Boolean).map(g => g.description);
+                        const others = currentGoldDescriptions.filter(desc => !topFour.includes(desc));
+                        return [...topFour, ...others];
+                    }
+
                     const ounceItem = newItems.find(d => d.includes('أونصة') || d.includes('Ounce'));
                     const otherNewItems = newItems.filter(d => d !== ounceItem);
                     let finalOrder = [...validOrder];
